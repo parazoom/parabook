@@ -53,18 +53,3 @@ L'app s'organise en 5 onglets :
 | **Actions** | Import/Export CSV, réglages (thème, langue), infos parachutiste, aide. |
 
 > 💡 **Sauvegarde** : tes données sont stockées dans le navigateur de ton appareil (non synchronisées entre appareils). Pense à **exporter régulièrement** ton carnet via *Actions → Exporter en fichier* pour ne rien perdre.
-
----
-
-## 🛠️ Pour les développeurs
-
-Application [Flutter](https://flutter.dev) (web). Construite en PWA et déployée automatiquement sur GitHub Pages à chaque `push` sur `main`.
-
-```bash
-flutter pub get
-dart run sqflite_common_ffi_web:setup        # SQLite (WASM) pour le web
-flutter run -d chrome                          # lancer en développement
-flutter build web --release --base-href /parabook/   # build de production
-```
-
-Stockage local via SQLite (`sqflite` sur mobile, `sqflite_common_ffi_web` sur le web). Interface localisée FR / EN.
