@@ -99,7 +99,7 @@ class ActionsScreen extends ConsumerWidget {
         const SizedBox(height: 24),
         Center(
           child: Text(
-            'ParaBook v1.0.0',
+            'ParaBook v1.2.0',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
         ),
@@ -182,7 +182,17 @@ class ActionsScreen extends ConsumerWidget {
       shouldParseNumbers: false,
     ).convert(content);
 
+    final numberCheck = _checkJumpNumbering(rows);
+    if (numberCheck.duplicates.isNotEmpty) {
+      if (!context.mounted) return;
+      await _showDuplicateNumbersDialog(context, numberCheck.duplicates);
+      return;
+    }
+
     final issues = _checkCsvFormat(rows, delimiter);
+    if (numberCheck.missing.isNotEmpty) {
+      issues.add(_missingNumbersMessage(numberCheck.missing));
+    }
     if (issues.isNotEmpty) {
       if (!context.mounted) return;
       final proceed = await _showFormatIssuesDialog(context, issues, rows);
@@ -418,6 +428,110 @@ List<String> _checkCsvFormat(List<List<dynamic>> rows, String delimiter) {
   }
 
   return issues;
+}
+
+class _NumberCheckResult {
+  final Map<int, List<int>> duplicates; // num -> lignes du fichier CSV (1-based, en-tête = ligne 1)
+  final List<int> missing;
+  _NumberCheckResult(this.duplicates, this.missing);
+}
+
+_NumberCheckResult _checkJumpNumbering(List<List<dynamic>> rows) {
+  final lines = <int, List<int>>{};
+  for (var i = 1; i < rows.length; i++) {
+    final row = rows[i];
+    if (row.isEmpty) continue;
+    final n = int.tryParse(row[0].toString().trim());
+    if (n == null) continue;
+    lines.putIfAbsent(n, () => []).add(i + 1);
+  }
+
+  final duplicates = <int, List<int>>{
+    for (final e in lines.entries)
+      if (e.value.length > 1) e.key: e.value
+  };
+
+  final missing = <int>[];
+  if (lines.isNotEmpty) {
+    final present = lines.keys.toSet();
+    final sorted = lines.keys.toList()..sort();
+    for (var n = sorted.first; n <= sorted.last; n++) {
+      if (!present.contains(n)) missing.add(n);
+    }
+  }
+
+  return _NumberCheckResult(duplicates, missing);
+}
+
+String _formatNumberRanges(List<int> nums) {
+  if (nums.isEmpty) return '';
+  final sorted = [...nums]..sort();
+  final parts = <String>[];
+  var start = sorted.first;
+  var prev = sorted.first;
+  for (var i = 1; i <= sorted.length; i++) {
+    if (i == sorted.length || sorted[i] != prev + 1) {
+      parts.add(start == prev ? '$start' : '$start-$prev');
+      if (i < sorted.length) {
+        start = sorted[i];
+        prev = sorted[i];
+      }
+    } else {
+      prev = sorted[i];
+    }
+  }
+  return parts.join(', ');
+}
+
+String _missingNumbersMessage(List<int> missing) {
+  var ranges = _formatNumberRanges(missing);
+  if (ranges.length > 200) ranges = '${ranges.substring(0, 200)}…';
+  final n = missing.length;
+  return '$n numéro${n > 1 ? 's' : ''} de saut manquant${n > 1 ? 's' : ''} '
+      'entre le premier et le dernier saut du fichier : $ranges';
+}
+
+Future<void> _showDuplicateNumbersDialog(
+  BuildContext context,
+  Map<int, List<int>> duplicates,
+) {
+  final sortedKeys = duplicates.keys.toList()..sort();
+  return showDialog<void>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Numéros de saut en double'),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Import impossible : plusieurs sauts partagent le même numéro '
+              'dans le fichier CSV.',
+            ),
+            const SizedBox(height: 12),
+            ...sortedKeys.map((n) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    '• Saut n°$n : lignes ${duplicates[n]!.join(', ')}',
+                  ),
+                )),
+            const SizedBox(height: 12),
+            const Text(
+              'Corrigez la numérotation dans le fichier puis réessayez.',
+              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
 }
 
 Future<bool?> _showFormatIssuesDialog(

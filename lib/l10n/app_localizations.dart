@@ -194,6 +194,12 @@ abstract class AppLocalizations {
   /// **'Saut n°'**
   String get jumpNumber;
 
+  /// No description provided for @jumpNumberExists.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce numéro de saut existe déjà.'**
+  String get jumpNumberExists;
+
   /// No description provided for @date.
   ///
   /// In fr, this message translates to:
@@ -506,6 +512,60 @@ abstract class AppLocalizations {
   /// **'Aucun saut enregistré'**
   String get noJumps;
 
+  /// No description provided for @noJumpsFiltered.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun saut ne correspond à ces filtres'**
+  String get noJumpsFiltered;
+
+  /// No description provided for @filterJumps.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtrer les sauts'**
+  String get filterJumps;
+
+  /// No description provided for @filterDateFrom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Du'**
+  String get filterDateFrom;
+
+  /// No description provided for @filterDateTo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Au'**
+  String get filterDateTo;
+
+  /// No description provided for @filterSearchNotes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recherche dans les notes'**
+  String get filterSearchNotes;
+
+  /// No description provided for @filterCutawayOnly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Libérations uniquement'**
+  String get filterCutawayOnly;
+
+  /// No description provided for @resetFilters.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialiser'**
+  String get resetFilters;
+
+  /// No description provided for @applyFilters.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtrer'**
+  String get applyFilters;
+
+  /// No description provided for @filtersActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtres actifs'**
+  String get filtersActive;
+
   /// No description provided for @num.
   ///
   /// In fr, this message translates to:
@@ -733,6 +793,30 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Corrigé'**
   String get changelogFixed;
+
+  /// No description provided for @changelog120date.
+  ///
+  /// In fr, this message translates to:
+  /// **'1 juillet 2026'**
+  String get changelog120date;
+
+  /// No description provided for @changelog120added1.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtre sur la liste des sauts : date (entre deux dates), recherche dans les notes, libération, zone de saut, pays, aéronef et type de saut'**
+  String get changelog120added1;
+
+  /// No description provided for @changelog120added2.
+  ///
+  /// In fr, this message translates to:
+  /// **'Import CSV : vérification de la numérotation des sauts (doublons bloqués, numéros manquants signalés)'**
+  String get changelog120added2;
+
+  /// No description provided for @changelog120added3.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajout ou modification d\'un saut : impossible de saisir un numéro de saut déjà utilisé'**
+  String get changelog120added3;
 
   /// No description provided for @changelog100date.
   ///

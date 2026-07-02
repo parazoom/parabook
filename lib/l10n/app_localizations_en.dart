@@ -57,6 +57,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get jumpNumber => 'Jump #';
 
   @override
+  String get jumpNumberExists => 'This jump number already exists.';
+
+  @override
   String get date => 'Date';
 
   @override
@@ -216,6 +219,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noJumps => 'No jumps recorded';
 
   @override
+  String get noJumpsFiltered => 'No jump matches these filters';
+
+  @override
+  String get filterJumps => 'Filter jumps';
+
+  @override
+  String get filterDateFrom => 'From';
+
+  @override
+  String get filterDateTo => 'To';
+
+  @override
+  String get filterSearchNotes => 'Search in notes';
+
+  @override
+  String get filterCutawayOnly => 'Cutaways only';
+
+  @override
+  String get resetFilters => 'Reset';
+
+  @override
+  String get applyFilters => 'Filter';
+
+  @override
+  String get filtersActive => 'Filters active';
+
+  @override
   String get num => '#';
 
   @override
@@ -336,6 +366,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get changelogFixed => 'Fixed';
+
+  @override
+  String get changelog120date => 'July 1, 2026';
+
+  @override
+  String get changelog120added1 =>
+      'Filter on the jumps list: date range, search in notes, cutaway, drop zone, country, aircraft and jump type';
+
+  @override
+  String get changelog120added2 =>
+      'CSV import: jump number validation (duplicates blocked, missing numbers flagged)';
+
+  @override
+  String get changelog120added3 =>
+      'Adding or editing a jump: can no longer enter a jump number that\'s already in use';
 
   @override
   String get changelog100date => 'May 29, 2026';

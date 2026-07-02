@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/jump.dart';
+import '../models/jump_filter.dart';
 import 'database.dart';
 
 class JumpsDao {
@@ -11,14 +12,66 @@ class JumpsDao {
     return rows.map(Jump.fromMap).toList();
   }
 
-  Future<List<Jump>> getPage(int limit, {int? beforeNum}) async {
+  Future<List<Jump>> getPage(int limit, {int? beforeNum, JumpFilter? filter}) async {
     final db = await _db;
-    final rows = beforeNum == null
-        ? await db.query('jumps', orderBy: 'num DESC', limit: limit)
-        : await db.rawQuery(
-            'SELECT * FROM jumps WHERE num < ? ORDER BY num DESC LIMIT ?',
-            [beforeNum, limit],
-          );
+    if (filter == null || !filter.isActive) {
+      final rows = beforeNum == null
+          ? await db.query('jumps', orderBy: 'num DESC', limit: limit)
+          : await db.rawQuery(
+              'SELECT * FROM jumps WHERE num < ? ORDER BY num DESC LIMIT ?',
+              [beforeNum, limit],
+            );
+      return rows.map(Jump.fromMap).toList();
+    }
+
+    final where = <String>[];
+    final args = <dynamic>[];
+    if (beforeNum != null) {
+      where.add('j.num < ?');
+      args.add(beforeNum);
+    }
+    if (filter.dateFrom != null) {
+      final d = filter.dateFrom!;
+      where.add('j.date >= ?');
+      args.add(DateTime(d.year, d.month, d.day).toIso8601String());
+    }
+    if (filter.dateTo != null) {
+      final d = filter.dateTo!;
+      where.add('j.date <= ?');
+      args.add(DateTime(d.year, d.month, d.day, 23, 59, 59, 999).toIso8601String());
+    }
+    if (filter.searchText.isNotEmpty) {
+      where.add('j.notes LIKE ?');
+      args.add('%${filter.searchText}%');
+    }
+    if (filter.cutawayOnly) {
+      where.add('j.cutaway = 1');
+    }
+    if (filter.dropZoneId != null) {
+      where.add('j.drop_zone_id = ?');
+      args.add(filter.dropZoneId);
+    }
+    if (filter.country != null && filter.country!.isNotEmpty) {
+      where.add('dz.country = ?');
+      args.add(filter.country);
+    }
+    if (filter.aircraftId != null) {
+      where.add('j.aircraft_id = ?');
+      args.add(filter.aircraftId);
+    }
+    if (filter.jumpTypeId != null) {
+      where.add('j.jump_type_id = ?');
+      args.add(filter.jumpTypeId);
+    }
+
+    final whereSql = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
+    final rows = await db.rawQuery('''
+      SELECT j.* FROM jumps j
+      LEFT JOIN drop_zones dz ON j.drop_zone_id = dz.id
+      $whereSql
+      ORDER BY j.num DESC
+      LIMIT ?
+    ''', [...args, limit]);
     return rows.map(Jump.fromMap).toList();
   }
 
@@ -31,6 +84,14 @@ class JumpsDao {
   Future<int> getNextNum() async {
     final last = await getLast();
     return (last?.num ?? 0) + 1;
+  }
+
+  Future<bool> numExists(int num, {int? excludeId}) async {
+    final db = await _db;
+    final rows = excludeId == null
+        ? await db.query('jumps', columns: ['id'], where: 'num = ?', whereArgs: [num], limit: 1)
+        : await db.query('jumps', columns: ['id'], where: 'num = ? AND id != ?', whereArgs: [num, excludeId], limit: 1);
+    return rows.isNotEmpty;
   }
 
   Future<int> insert(Jump jump) async {

@@ -9,6 +9,7 @@ import '../../models/drop_zone.dart';
 import '../../models/jump_type.dart';
 import '../../models/aircraft.dart';
 import '../../models/equipment.dart';
+import '../../models/jump_filter.dart';
 import 'add_jump_screen.dart';
 import 'jump_detail_screen.dart';
 
@@ -26,6 +27,7 @@ class _JumpsScreenState extends ConsumerState<JumpsScreen> {
   bool _loading = false;
   bool _hasMore = true;
   int? _lastNum;
+  JumpFilter _filter = const JumpFilter();
 
   @override
   void initState() {
@@ -50,7 +52,7 @@ class _JumpsScreenState extends ConsumerState<JumpsScreen> {
   Future<void> _loadMore() async {
     if (_loading || !_hasMore) return;
     setState(() => _loading = true);
-    final rows = await ref.read(jumpsDaoProvider).getPage(_pageSize, beforeNum: _lastNum);
+    final rows = await ref.read(jumpsDaoProvider).getPage(_pageSize, beforeNum: _lastNum, filter: _filter);
     if (!mounted) return;
     setState(() {
       _jumps.addAll(rows);
@@ -66,6 +68,22 @@ class _JumpsScreenState extends ConsumerState<JumpsScreen> {
     await _loadMore();
   }
 
+  Future<void> _openFilterSheet(BuildContext context) async {
+    final result = await showModalBottomSheet<JumpFilter>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _FilterSheet(filter: _filter),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _filter = result);
+    await _refresh();
+  }
+
+  void _clearFilters() {
+    setState(() => _filter = const JumpFilter());
+    _refresh();
+  }
+
   Future<void> _copyLast(BuildContext context) async {
     final last = await ref.read(jumpsDaoProvider).getLast();
     if (!context.mounted) return;
@@ -78,12 +96,18 @@ class _JumpsScreenState extends ConsumerState<JumpsScreen> {
     final l = AppLocalizations.of(context)!;
     return Stack(
       children: [
-        if (_jumps.isEmpty && _loading)
-          const Center(child: CircularProgressIndicator())
-        else if (_jumps.isEmpty)
-          Center(child: Text(l.noJumps))
-        else
-          _JumpsList(jumps: _jumps, l: l, scrollCtrl: _scrollCtrl, loading: _loading, onUpdated: _refresh),
+        Column(
+          children: [
+            if (_filter.isActive) _FilterBanner(l: l, onClear: _clearFilters),
+            Expanded(
+              child: _jumps.isEmpty && _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _jumps.isEmpty
+                      ? Center(child: Text(_filter.isActive ? l.noJumpsFiltered : l.noJumps))
+                      : _JumpsList(jumps: _jumps, l: l, scrollCtrl: _scrollCtrl, loading: _loading, onUpdated: _refresh),
+            ),
+          ],
+        ),
         Positioned(
           bottom: 24 + MediaQuery.of(context).padding.bottom,
           right: 16 + MediaQuery.of(context).padding.right,
@@ -91,6 +115,13 @@ class _JumpsScreenState extends ConsumerState<JumpsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              FloatingActionButton(
+                heroTag: 'search_jumps',
+                backgroundColor: _filter.isActive ? Theme.of(context).colorScheme.primary : null,
+                onPressed: () => _openFilterSheet(context),
+                child: const Icon(Icons.search),
+              ),
+              const SizedBox(height: 12),
               FloatingActionButton(
                 heroTag: 'copy_last_jumps',
                 onPressed: () => _copyLast(context),
@@ -270,6 +301,281 @@ class _JumpRow extends StatelessWidget {
             Expanded(flex: 3, child: Text(jump.notes, overflow: TextOverflow.ellipsis, maxLines: 2, style: subtitleStyle.copyWith(fontSize: 12))),
           ],
         ]),
+      ),
+    );
+  }
+}
+
+class _FilterBanner extends StatelessWidget {
+  final AppLocalizations l;
+  final VoidCallback onClear;
+  const _FilterBanner({required this.l, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: primary.withAlpha(30),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt, size: 16, color: primary),
+          const SizedBox(width: 8),
+          Expanded(child: Text(l.filtersActive, style: TextStyle(color: primary, fontSize: 12))),
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: primary),
+            onPressed: onClear,
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterSheet extends ConsumerStatefulWidget {
+  final JumpFilter filter;
+  const _FilterSheet({required this.filter});
+
+  @override
+  ConsumerState<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends ConsumerState<_FilterSheet> {
+  late TextEditingController _searchCtrl;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+  bool _cutawayOnly = false;
+  int? _dzId;
+  String? _country;
+  int? _aircraftId;
+  int? _typeId;
+
+  @override
+  void initState() {
+    super.initState();
+    final f = widget.filter;
+    _searchCtrl = TextEditingController(text: f.searchText);
+    _dateFrom = f.dateFrom;
+    _dateTo = f.dateTo;
+    _cutawayOnly = f.cutawayOnly;
+    _dzId = f.dropZoneId;
+    _country = f.country;
+    _aircraftId = f.aircraftId;
+    _typeId = f.jumpTypeId;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: (isFrom ? _dateFrom : _dateTo) ?? DateTime.now(),
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isFrom) {
+          _dateFrom = picked;
+        } else {
+          _dateTo = picked;
+        }
+      });
+    }
+  }
+
+  void _reset() {
+    setState(() {
+      _searchCtrl.clear();
+      _dateFrom = null;
+      _dateTo = null;
+      _cutawayOnly = false;
+      _dzId = null;
+      _country = null;
+      _aircraftId = null;
+      _typeId = null;
+    });
+  }
+
+  void _apply() {
+    Navigator.pop(
+      context,
+      JumpFilter(
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
+        searchText: _searchCtrl.text.trim(),
+        cutawayOnly: _cutawayOnly,
+        dropZoneId: _dzId,
+        country: (_country != null && _country!.isNotEmpty) ? _country : null,
+        aircraftId: _aircraftId,
+        jumpTypeId: _typeId,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final dzList = ref.watch(dropZonesProvider).value ?? [];
+    final jtList = ref.watch(jumpTypesProvider).value ?? [];
+    final aircraftList = ref.watch(aircraftProvider).value ?? [];
+    final countries = dzList.map((d) => d.country).where((c) => c.isNotEmpty).toSet().toList()..sort();
+
+    final bgColor = ref.watch(settingsProvider).backgroundColor;
+    final dropdownColor = HSLColor.fromColor(bgColor)
+        .withLightness((HSLColor.fromColor(bgColor).lightness + 0.2).clamp(0.0, 1.0))
+        .toColor();
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 16 + MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.filterJumps, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l.filterDateFrom),
+                  subtitle: Text(_dateFrom == null ? '-' : DateFormat.yMd(Localizations.localeOf(context).toString()).format(_dateFrom!)),
+                  onTap: () => _pickDate(isFrom: true),
+                ),
+              ),
+              Expanded(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l.filterDateTo),
+                  subtitle: Text(_dateTo == null ? '-' : DateFormat.yMd(Localizations.localeOf(context).toString()).format(_dateTo!)),
+                  onTap: () => _pickDate(isFrom: false),
+                ),
+              ),
+            ]),
+            TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(labelText: l.filterSearchNotes),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(l.filterCutawayOnly),
+              value: _cutawayOnly,
+              onChanged: (v) => setState(() => _cutawayOnly = v ?? false),
+            ),
+            _FilterDropdown<DropZone, int>(
+              label: l.dropZone,
+              value: _dzId,
+              items: dzList,
+              getName: (e) => e.name,
+              getValue: (e) => e.id!,
+              onChanged: (v) => setState(() => _dzId = v),
+              dropdownColor: dropdownColor,
+            ),
+            _FilterDropdown<String, String>(
+              label: l.country,
+              value: _country,
+              items: countries,
+              getName: (e) => e,
+              getValue: (e) => e,
+              onChanged: (v) => setState(() => _country = v),
+              dropdownColor: dropdownColor,
+            ),
+            _FilterDropdown<Aircraft, int>(
+              label: l.aircraft,
+              value: _aircraftId,
+              items: aircraftList,
+              getName: (e) => e.name,
+              getValue: (e) => e.id!,
+              onChanged: (v) => setState(() => _aircraftId = v),
+              dropdownColor: dropdownColor,
+            ),
+            _FilterDropdown<JumpType, int>(
+              label: l.jumpType,
+              value: _typeId,
+              items: jtList,
+              getName: (e) => e.name,
+              getValue: (e) => e.id!,
+              onChanged: (v) => setState(() => _typeId = v),
+              dropdownColor: dropdownColor,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _reset,
+                    child: Text(l.resetFilters),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _apply,
+                    child: Text(l.applyFilters),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterDropdown<T, V> extends StatelessWidget {
+  final String label;
+  final V? value;
+  final List<T> items;
+  final String Function(T) getName;
+  final V Function(T) getValue;
+  final void Function(V?) onChanged;
+  final Color dropdownColor;
+
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.getName,
+    required this.getValue,
+    required this.onChanged,
+    required this.dropdownColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currentValue = items.any((e) => getValue(e) == value) ? value : null;
+    final allNames = ['-', ...items.map(getName)];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: DropdownButtonFormField<V>(
+        initialValue: currentValue,
+        decoration: InputDecoration(labelText: label),
+        dropdownColor: dropdownColor,
+        selectedItemBuilder: (_) => allNames.map((name) => Text(name, overflow: TextOverflow.ellipsis)).toList(),
+        items: [
+          DropdownMenuItem<V>(value: null, child: const Text('-')),
+          ...items.map((e) => DropdownMenuItem<V>(value: getValue(e), child: Text(getName(e), overflow: TextOverflow.ellipsis))),
+        ],
+        onChanged: onChanged,
       ),
     );
   }

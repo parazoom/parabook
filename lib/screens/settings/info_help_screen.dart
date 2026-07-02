@@ -101,6 +101,13 @@ class _ChangelogEntry {
 }
 
 List<_ChangelogEntry> _buildChangelog(AppLocalizations l) => [
+  _ChangelogEntry('1.2.0', l.changelog120date, [
+    _CSection(l.changelogAdded, [
+      l.changelog120added1,
+      l.changelog120added2,
+      l.changelog120added3,
+    ]),
+  ]),
   _ChangelogEntry('1.0.0', l.changelog100date, [
     _CSection(l.changelogAdded, [
       l.changelog100note,

@@ -57,6 +57,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get jumpNumber => 'Saut n°';
 
   @override
+  String get jumpNumberExists => 'Ce numéro de saut existe déjà.';
+
+  @override
   String get date => 'Date';
 
   @override
@@ -216,6 +219,33 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noJumps => 'Aucun saut enregistré';
 
   @override
+  String get noJumpsFiltered => 'Aucun saut ne correspond à ces filtres';
+
+  @override
+  String get filterJumps => 'Filtrer les sauts';
+
+  @override
+  String get filterDateFrom => 'Du';
+
+  @override
+  String get filterDateTo => 'Au';
+
+  @override
+  String get filterSearchNotes => 'Recherche dans les notes';
+
+  @override
+  String get filterCutawayOnly => 'Libérations uniquement';
+
+  @override
+  String get resetFilters => 'Réinitialiser';
+
+  @override
+  String get applyFilters => 'Filtrer';
+
+  @override
+  String get filtersActive => 'Filtres actifs';
+
+  @override
   String get num => 'N°';
 
   @override
@@ -336,6 +366,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get changelogFixed => 'Corrigé';
+
+  @override
+  String get changelog120date => '1 juillet 2026';
+
+  @override
+  String get changelog120added1 =>
+      'Filtre sur la liste des sauts : date (entre deux dates), recherche dans les notes, libération, zone de saut, pays, aéronef et type de saut';
+
+  @override
+  String get changelog120added2 =>
+      'Import CSV : vérification de la numérotation des sauts (doublons bloqués, numéros manquants signalés)';
+
+  @override
+  String get changelog120added3 =>
+      'Ajout ou modification d\'un saut : impossible de saisir un numéro de saut déjà utilisé';
 
   @override
   String get changelog100date => '29 mai 2026';

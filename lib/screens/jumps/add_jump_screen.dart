@@ -27,6 +27,7 @@ class _AddJumpScreenState extends ConsumerState<AddJumpScreen> {
   int? _dzId, _aircraftId, _bagId, _canopyId, _suitId, _typeId;
   bool _cutaway = false;
   bool _loading = true;
+  String? _numError;
 
   @override
   void initState() {
@@ -113,7 +114,10 @@ class _AddJumpScreenState extends ConsumerState<AddJumpScreen> {
                 TextField(
                   controller: _numCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: l.jumpNumber),
+                  decoration: InputDecoration(labelText: l.jumpNumber, errorText: _numError),
+                  onChanged: (_) {
+                    if (_numError != null) setState(() => _numError = null);
+                  },
                 ),
                 const SizedBox(height: 16),
                 ListTile(
@@ -217,8 +221,16 @@ class _AddJumpScreenState extends ConsumerState<AddJumpScreen> {
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context)!;
     final num = int.tryParse(_numCtrl.text);
     if (num == null) return;
+
+    final dao = ref.read(jumpsDaoProvider);
+    final exists = await dao.numExists(num, excludeId: widget.editJump?.id);
+    if (exists) {
+      setState(() => _numError = l.jumpNumberExists);
+      return;
+    }
 
     final jump = Jump(
       id: widget.editJump?.id,
@@ -234,7 +246,6 @@ class _AddJumpScreenState extends ConsumerState<AddJumpScreen> {
       notes: _notesCtrl.text,
     );
 
-    final dao = ref.read(jumpsDaoProvider);
     if (widget.editJump != null) {
       await dao.update(jump);
     } else {
